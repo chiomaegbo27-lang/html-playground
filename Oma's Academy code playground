@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Oma's HTML • CSS • JS Playground</title>
+  <style>
+    :root{
+      --bg:#0f172a; /* slate-900 */
+      --panel:#111827; /* gray-900 */
+      --muted:#94a3b8; /* slate-400 */
+      --text:#e5e7eb; /* gray-200 */
+      --brand:#22c55e; /* green-500 */
+      --accent:#38bdf8; /* sky-400 */
+      --warn:#f59e0b; /* amber-500 */
+      --danger:#ef4444; /* red-500 */
+      --border:#1f2937; /* gray-800 */
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; background:var(--bg); color:var(--text);
+      font:14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial;
+      display:flex; flex-direction:column;
+    }
+    header{
+      display:flex; align-items:center; gap:.75rem;
+      padding:.8rem 1rem; border-bottom:1px solid var(--border);
+      background:linear-gradient(180deg, rgba(255,255,255,.03), transparent);
+      position:sticky; top:0; z-index:5;
+    }
+    header h1{font-size:16px; margin:0; font-weight:700; letter-spacing:.3px}
+    header .pill{padding:.25rem .5rem; border:1px solid var(--border); border-radius:999px; color:var(--muted)}
+    header .spacer{flex:1}
+    button, .btn{
+      background:#0b1220; border:1px solid var(--border); color:var(--text);
+      padding:.5rem .75rem; border-radius:.6rem; cursor:pointer;
+    }
+    button:hover{border-color:#2b384a}
+    .btn.primary{background:var(--brand); border-color:transparent; color:#06210f; font-weight:700}
+    .btn.ghost{background:transparent}
+    .btn.warn{background:var(--warn); color:#241a00; border-color:transparent}
+    .btn.danger{background:var(--danger); color:#2a0c0c; border-color:transparent}
+    .toggle{display:inline-flex; align-items:center; gap:.5rem}
+    .toggle input{accent-color:var(--brand)}
+
+    .wrap{display:flex; min-height:0; flex:1}
+    .editors{width:50%; min-width:320px; border-right:1px solid var(--border); display:flex; flex-direction:column}
+
+    .tabs{display:flex; gap:.5rem; padding:.5rem; border-bottom:1px solid var(--border); background:#0b1220; position:sticky; top:49px; z-index:4}
+    .tab{padding:.4rem .7rem; border:1px solid var(--border); border-radius:.5rem; color:var(--muted); cursor:pointer; user-select:none}
+    .tab.active{color:#06140b; background:var(--brand); border-color:transparent; font-weight:700}
+
+    .editor{display:none; flex:1; min-height:0}
+    .editor.active{display:flex}
+    textarea{width:100%; height:100%; resize:none; border:0; outline:none; padding:1rem; background:var(--panel); color:var(--text); font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size:13px; line-height:1.5}
+
+    .right{width:50%; min-width:320px; display:flex; flex-direction:column}
+    .status{display:flex; align-items:center; gap:.75rem; padding:.5rem .75rem; color:var(--muted); border-bottom:1px solid var(--border)}
+    iframe{flex:1; width:100%; border:0; background:white}
+
+    .footer{
+      display:flex; gap:.5rem; padding:.5rem; border-top:1px solid var(--border); background:#0b1220; align-items:center; flex-wrap:wrap
+    }
+    .kbd{border:1px solid var(--border); border-bottom-width:2px; padding:.15rem .35rem; border-radius:.35rem; background:#0b1220; color:var(--muted)}
+
+    @media (max-width: 900px){
+      .wrap{flex-direction:column}
+      .editors,.right{width:100%}
+      .tabs{top:unset}
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Oma's Playground</h1>
+    <span class="pill">HTML • CSS • JS</span>
+    <div class="spacer"></div>
+    <label class="toggle"><input id="autoRun" type="checkbox" checked/> Auto‑Run</label>
+    <button id="run" class="btn primary" title="Run (Ctrl+Enter)">▶ Run</button>
+    <button id="reset" class="btn warn" title="Reset to default">Reset</button>
+    <button id="export" class="btn" title="Download as single HTML">Export</button>
+    <button id="share" class="btn ghost" title="Share link with code">Share Link</button>
+    <button id="clear" class="btn danger" title="Clear saved data">Clear Save</button>
+  </header>
+
+  <div class="wrap">
+    <section class="editors">
+      <div class="tabs">
+        <div class="tab active" data-target="html">HTML</div>
+        <div class="tab" data-target="css">CSS</div>
+        <div class="tab" data-target="js">JS</div>
+      </div>
+
+      <div class="editor active" data-name="html">
+        <textarea id="html"></textarea>
+      </div>
+      <div class="editor" data-name="css">
+        <textarea id="css"></textarea>
+      </div>
+      <div class="editor" data-name="js">
+        <textarea id="js"></textarea>
+      </div>
+
+      <div class="footer">
+        <span>Shortcuts:</span>
+        <span class="kbd">Ctrl/Cmd + Enter</span> <span>Run</span>
+        <span class="kbd">Ctrl/Cmd + S</span> <span>Save</span>
+        <span class="kbd">Ctrl/Cmd + /</span> <span>Toggle Auto‑Run</span>
+      </div>
+    </section>
+
+    <section class="right">
+      <div class="status">
+        <span id="status">Ready</span>
+      </div>
+      <iframe id="preview" sandbox="allow-scripts allow-same-origin allow-presentation"></iframe>
+    </section>
+  </div>
+
+  <script>
+    // --- Configuration ---
+    const STORAGE_KEY = "oma_playground_v1";
+
+    const DEFAULTS = {
+      html: `<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Oma's First Page</title>
+  </head>
+  <body>
+    <h1>Hello, Oma's Academy! 👋</h1>
+    <p>Edit HTML, CSS, and JS, then click <strong>Run</strong>.</p>
+    <button id="btn">Click me</button>
+  </body>
+</html>`,
+      css: `body{font-family:system-ui; padding:2rem}
+h1{color:#16a34a}
+button{padding:.6rem 1rem; border:0; background:#38bdf8; color:#001018; border-radius:.5rem; font-weight:700}
+button:hover{filter:brightness(.95)}`,
+      js: `document.getElementById('btn')?.addEventListener('click',()=>{
+  alert("You're coding like a pro! ✨");
+});`
+    };
+
+    // --- Elements ---
+    const els = {
+      tabs: document.querySelectorAll('.tab'),
+      editors: document.querySelectorAll('.editor'),
+      html: document.getElementById('html'),
+      css: document.getElementById('css'),
+      js: document.getElementById('js'),
+      iframe: document.getElementById('preview'),
+      status: document.getElementById('status'),
+      autoRun: document.getElementById('autoRun'),
+      runBtn: document.getElementById('run'),
+      resetBtn: document.getElementById('reset'),
+      exportBtn: document.getElementById('export'),
+      shareBtn: document.getElementById('share'),
+      clearBtn: document.getElementById('clear'),
+    };
+
+    // --- Tab switching ---
+    els.tabs.forEach(tab => tab.addEventListener('click', () => {
+      els.tabs.forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      const target = tab.getAttribute('data-target');
+      els.editors.forEach(p => p.classList.toggle('active', p.getAttribute('data-name') === target));
+    }));
+
+    // --- Load from storage or defaults ---
+    function loadStateFromURL(){
+      try{
+        const params = new URLSearchParams(location.search);
+        if(params.has('code')){
+          const json = atob(params.get('code'));
+          return JSON.parse(json);
+        }
+      }catch(e){ console.warn('Bad share code'); }
+      return null;
+    }
+
+    function load(){
+      const shared = loadStateFromURL();
+      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+      const state = shared || saved || DEFAULTS;
+      els.html.value = state.html; els.css.value = state.css; els.js.value = state.js;
+    }
+
+    function save(){
+      const state = { html: els.html.value, css: els.css.value, js: els.js.value };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      toast('Saved');
+    }
+
+    // --- Build preview document ---
+    function buildDocument(){
+      const css = `<style>\n${els.css.value}\n</style>`;
+      const js = `<script>\n${els.js.value.replace(/<\//g,'<\\/')}\n<\/script>`;
+
+      // Inject CSS and JS into HTML safely
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(els.html.value, 'text/html');
+
+      // Append CSS to <head>
+      (doc.head || doc.body || doc).appendChild(Object.assign(doc.createElement('style'),{textContent: els.css.value}));
+      // Append JS to <body> (end)
+      (doc.body || doc.head || doc).appendChild(Object.assign(doc.createElement('script'),{textContent: els.js.value}));
+
+      return '<!doctype html>\n' + doc.documentElement.outerHTML;
+    }
+
+    // --- Render to iframe ---
+    let renderTimer;
+    function render(){
+      const html = buildDocument();
+      els.iframe.srcdoc = html;
+      els.status.textContent = `Rendered ${new Date().toLocaleTimeString()}`;
+    }
+
+    function scheduleRender(){
+      clearTimeout(renderTimer);
+      if(els.autoRun.checked){
+        renderTimer = setTimeout(render, 350);
+      }
+    }
+
+    ;['input','keyup'].forEach(ev=>{
+      els.html.addEventListener(ev, scheduleRender);
+      els.css.addEventListener(ev, scheduleRender);
+      els.js.addEventListener(ev, scheduleRender);
+    });
+
+    // --- Buttons ---
+    els.runBtn.addEventListener('click', () => { render(); save(); });
+    els.resetBtn.addEventListener('click', () => {
+      if(confirm('Reset editors to starter code?')){
+        els.html.value = DEFAULTS.html; els.css.value = DEFAULTS.css; els.js.value = DEFAULTS.js; render(); save();
+      }
+    });
+
+    els.exportBtn.addEventListener('click', () => {
+      const blob = new Blob([buildDocument()], { type: 'text/html' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'omas-playground-export.html';
+      a.click();
+      URL.revokeObjectURL(a.href);
+    });
+
+    els.shareBtn.addEventListener('click', () => {
+      const state = { html: els.html.value, css: els.css.value, js: els.js.value };
+      const code = btoa(unescape(encodeURIComponent(JSON.stringify(state))));
+      const url = `${location.origin}${location.pathname}?code=${code}`;
+      navigator.clipboard?.writeText(url);
+      toast('Share link copied to clipboard');
+      history.replaceState(null,'',url);
+    });
+
+    els.clearBtn.addEventListener('click', () => {
+      if(confirm('Clear saved data for this playground?')){
+        localStorage.removeItem(STORAGE_KEY);
+        toast('Cleared local save');
+      }
+    });
+
+    // Keyboard shortcuts
+    window.addEventListener('keydown', (e) => {
+      if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='enter'){ e.preventDefault(); els.runBtn.click(); }
+      if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='s'){ e.preventDefault(); save(); }
+      if((e.ctrlKey||e.metaKey) && e.key==='/'){ e.preventDefault(); els.autoRun.checked = !els.autoRun.checked; scheduleRender(); toast(`Auto‑Run ${els.autoRun.checked?'ON':'OFF'}`); }
+    });
+
+    // Tiny toast
+    function toast(msg){
+      els.status.textContent = msg;
+      const t = document.createElement('div');
+      t.textContent = msg;
+      Object.assign(t.style, {position:'fixed', right:'12px', bottom:'12px', background:'#111827', color:'#e5e7eb', padding:'10px 12px', border:'1px solid #1f2937', borderRadius:'10px', boxShadow:'0 10px 30px rgba(0,0,0,.35)', zIndex:9999});
+      document.body.appendChild(t); setTimeout(()=>t.remove(), 1600);
+    }
+
+    // Init
+    load();
+    render();
+  </script>
+</body>
+</html>
